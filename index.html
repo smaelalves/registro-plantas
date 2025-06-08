@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Coleta de Dados da Planta com QR Code</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyByIpGG2Blw0hRUmyPXqal10M_R2ZwI9bg",
+      authDomain: "monitoramento-plantas.firebaseapp.com",
+      databaseURL: "https://monitoramento-plantas-default-rtdb.firebaseio.com",
+      projectId: "monitoramento-plantas",
+      storageBucket: "monitoramento-plantas.firebasestorage.app",
+      messagingSenderId: "1020939163682",
+      appId: "1:1020939163682:web:b27eb35d04b080fc2fd27b"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    window.enviarDados = function () {
+      const codigo = document.getElementById("codigo").value;
+      const tamanho = document.getElementById("tamanho").value;
+      const dataColeta = document.getElementById("dataColeta").value;
+
+      if (!codigo || !tamanho || !dataColeta) {
+        alert("Preencha todos os campos.");
+        return;
+      }
+
+      set(ref(db, 'plantas/' + codigo), {
+        codigo: codigo,
+        tamanho: tamanho,
+        dataColeta: dataColeta
+      })
+      .then(() => {
+        alert("Dados enviados com sucesso!");
+        document.getElementById("formPlanta").reset();
+      })
+      .catch((error) => {
+        console.error("Erro ao enviar dados:", error);
+        alert("Erro ao enviar dados. Verifique o console.");
+      });
+    };
+  </script>
+
+  <!-- HTML5 QR Code -->
+  <script src="https://unpkg.com/html5-qrcode" defer></script>
+  <style>
+    #qr-reader {
+      width: 300px;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Formulário de Coleta de Dados da Planta</h2>
+
+  <div id="qr-reader"></div>
+  <p><strong>Código escaneado:</strong> <span id="codigoDisplay">Nenhum</span></p>
+
+  <form id="formPlanta" onsubmit="event.preventDefault(); enviarDados();">
+    <label>Código da Planta:<br>
+      <input type="text" id="codigo" required readonly>
+    </label><br><br>
+
+    <label>Tamanho (cm):<br>
+      <input type="number" id="tamanho" required>
+    </label><br><br>
+
+    <label>Data de Coleta:<br>
+      <input type="date" id="dataColeta" required>
+    </label><br><br>
+
+    <button type="submit">Enviar</button>
+  </form>
+
+  <script>
+    window.addEventListener('load', function () {
+      if (window.Html5QrcodeScanner) {
+        const scanner = new Html5QrcodeScanner(
+          "qr-reader", { fps: 10, qrbox: 250 });
+
+        scanner.render((decodedText, decodedResult) => {
+          document.getElementById("codigo").value = decodedText;
+          document.getElementById("codigoDisplay").innerText = decodedText;
+          scanner.clear(); // parar o scanner após escanear
+        });
+      } else {
+        console.error("html5-qrcode não carregado.");
+      }
+    });
+  </script>
+</body>
+</html>
