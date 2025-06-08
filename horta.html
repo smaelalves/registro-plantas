@@ -35,11 +35,15 @@
             font-weight: 700;
             text-align: center;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: background-color 0.2s, opacity 0.2s;
             display: inline-block;
         }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
         .btn-primary { background-color: #2d8b51; color: white; }
-        .btn-primary:hover { background-color: #256a40; }
+        .btn-primary:hover:not(:disabled) { background-color: #256a40; }
         .btn-secondary { background-color: #f1f5f9; color: #475569; }
         .btn-secondary:hover { background-color: #e2e8f0; }
     </style>
@@ -55,9 +59,9 @@
                 <p class="text-lg text-gray-600 mb-8">Conectando Dados e Natureza</p>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button id="aluno-btn" class="btn btn-primary w-full text-lg">Sou Aluno</button>
-                <button id="visitante-btn" class="btn btn-primary w-full text-lg">Sou Visitante</button>
-                <button id="professor-btn" class="btn btn-primary w-full text-lg">Sou Professor</button>
+                <button id="aluno-btn" class="btn btn-primary w-full text-lg" disabled>Carregando...</button>
+                <button id="visitante-btn" class="btn btn-primary w-full text-lg" disabled>Carregando...</button>
+                <button id="professor-btn" class="btn btn-primary w-full text-lg" disabled>Carregando...</button>
             </div>
             <div class="text-center mt-6">
                 <p id="user-id-display" class="text-xs text-gray-400"></p>
@@ -163,26 +167,34 @@
         };
         const messageModal = document.getElementById('message-modal');
         const messageText = document.getElementById('message-text');
+        const roleButtons = {
+            aluno: document.getElementById('aluno-btn'),
+            visitante: document.getElementById('visitante-btn'),
+            professor: document.getElementById('professor-btn')
+        };
 
         // FUNÇÃO PRINCIPAL DE INICIALIZAÇÃO
         async function main() {
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-            
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    userId = user.uid;
-                    document.getElementById('user-id-display').textContent = `ID de Sessão: ${userId}`;
-                    setupEventListeners();
-                } else {
-                    console.log("Usuário não autenticado, tentando login anônimo.");
-                    await authenticateUser();
-                }
-            });
-
-             if (!auth.currentUser) {
-                await authenticateUser();
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        document.getElementById('user-id-display').textContent = `ID de Sessão: ${userId}`;
+                        // APLICAÇÃO PRONTA: Ativa os botões
+                        enableRoles();
+                        setupEventListeners();
+                    } else {
+                        // Se não houver usuário, tenta autenticar.
+                        authenticateUser();
+                    }
+                });
+            } catch (error) {
+                 console.error("Erro na inicialização do Firebase:", error);
+                 showMessage("Falha crítica na inicialização. Recarregue a página.");
             }
         }
         
@@ -197,6 +209,16 @@
                 console.error("Erro na autenticação:", error);
                 showMessage("Erro ao conectar. Tente recarregar a página.");
             }
+        }
+        
+        // Ativa os botões de seleção de perfil quando o app está pronto
+        function enableRoles() {
+            roleButtons.aluno.disabled = false;
+            roleButtons.aluno.textContent = 'Sou Aluno';
+            roleButtons.visitante.disabled = false;
+            roleButtons.visitante.textContent = 'Sou Visitante';
+            roleButtons.professor.disabled = false;
+            roleButtons.professor.textContent = 'Sou Professor';
         }
 
         // Funções de controle da UI
@@ -216,11 +238,11 @@
             messageModal.style.display = 'none';
         });
 
-        // Configuração dos Event Listeners
+        // Configuração dos Event Listeners (só é chamada quando a auth está pronta)
         function setupEventListeners() {
-            document.getElementById('aluno-btn').addEventListener('click', () => startScan('aluno'));
-            document.getElementById('visitante-btn').addEventListener('click', () => startScan('visitante'));
-            document.getElementById('professor-btn').addEventListener('click', () => {
+            roleButtons.aluno.addEventListener('click', () => startScan('aluno'));
+            roleButtons.visitante.addEventListener('click', () => startScan('visitante'));
+            roleButtons.professor.addEventListener('click', () => {
                 currentRole = 'professor';
                 loadTeacherDashboard();
             });
@@ -235,7 +257,7 @@
 
         function backToRoleSelection() {
             if (qrCodeScanner && qrCodeScanner.isScanning) {
-                qrCodeScanner.clear().catch(err => console.error("Falha ao limpar scanner", err));
+                qrCodeScanner.stop().catch(err => console.error("Falha ao limpar scanner", err));
             }
             showView('roleSelection');
         }
@@ -245,21 +267,25 @@
             currentRole = role;
             showView('scanner');
             
+            // Garante que o scanner seja criado apenas uma vez.
             if (!qrCodeScanner) {
                 qrCodeScanner = new Html5Qrcode("qr-reader");
             }
 
             const qrCodeSuccessCallback = (decodedText, decodedResult) => {
-                qrCodeScanner.clear().catch(err => console.error("Falha ao parar o scanner.", err));
-                handleQrCodeSuccess(decodedText);
+                // Para o scanner assim que um código é lido com sucesso.
+                qrCodeScanner.stop()
+                    .then(() => handleQrCodeSuccess(decodedText))
+                    .catch(err => console.error("Falha ao parar o scanner.", err));
             };
 
             const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-            qrCodeScanner.start({ facingMode: "environment" }, config, qrCodeSuccessCallback, (errorMessage) => {
-                // Erros de scan podem ser ignorados
-            }).catch((err) => {
-                showMessage("Não foi possível iniciar a câmera. Verifique as permissões.");
-                console.error(err);
+            
+            // Inicia o scanner
+            qrCodeScanner.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+            .catch((err) => {
+                showMessage("Não foi possível iniciar a câmera. Verifique as permissões do navegador para este site.");
+                console.error("Erro ao iniciar o scanner:", err);
                 backToRoleSelection();
             });
         }
@@ -318,7 +344,8 @@
                 fase: document.getElementById('fase').value,
                 manchas: document.getElementById('manchas').value,
                 luminosidade: document.getElementById('luminosidade').value,
-                lastUpdated: new Date().toLocaleString('pt-BR')
+                lastUpdated: new Date().toLocaleString('pt-BR'),
+                lastUpdatedBy: userId 
             };
 
             try {
