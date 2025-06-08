@@ -13,45 +13,24 @@
         body { font-family: 'Inter', sans-serif; }
         .view { display: none; }
         #qr-reader { border: 2px dashed #cbd5e1; border-radius: 8px; }
-        .form-label {
-            font-weight: 500;
-            color: #4a5568;
-        }
+        .form-label { font-weight: 500; color: #4a5568; }
         .form-input {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.5rem;
-            transition: border-color 0.2s;
+            width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; transition: border-color 0.2s;
         }
-        .form-input:focus {
-            outline: none;
-            border-color: #4299e1;
-            box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.5);
-        }
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-            font-weight: 700;
-            text-align: center;
-            cursor: pointer;
-            transition: background-color 0.2s, opacity 0.2s;
-            display: inline-block;
-        }
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
+        .form-input:focus { outline: none; border-color: #4299e1; box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.5); }
+        .btn { padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 700; text-align: center; cursor: pointer; transition: all 0.2s; display: inline-block; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn-primary { background-color: #2d8b51; color: white; }
         .btn-primary:hover:not(:disabled) { background-color: #256a40; }
         .btn-secondary { background-color: #f1f5f9; color: #475569; }
         .btn-secondary:hover { background-color: #e2e8f0; }
+        #photo-preview { max-height: 200px; border-radius: 0.5rem; margin-top: 1rem; }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
 
     <div id="app-container" class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg w-full max-w-3xl">
-        
+
         <!-- VISÃO DE SELEÇÃO DE PERFIL -->
         <div id="role-selection-view" class="view" style="display: block;">
             <div class="text-center">
@@ -79,13 +58,24 @@
 
         <!-- VISÃO DO FORMULÁRIO DO ALUNO -->
         <div id="student-form-view" class="view">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">Dados da Planta: <span id="plant-id-form" class="text-green-600"></span></h2>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">Dados da Planta: <span id="plant-id-form" class="text-green-600"></span></h2>
+            <p id="upload-status" class="text-center text-blue-600 font-semibold mb-4"></p>
             <form id="plant-form" class="space-y-4">
+                <div>
+                    <label for="plantName" class="form-label">Nome da Planta</label>
+                    <input type="text" id="plantName" class="form-input" placeholder="Ex: Tomateiro Cereja">
+                </div>
+                 <div>
+                    <label for="plantPhoto" class="form-label">Foto da Planta</label>
+                    <input type="file" id="plantPhoto" class="form-input" accept="image/*">
+                    <img id="photo-preview" class="hidden mx-auto" src="#" alt="Pré-visualização da foto">
+                </div>
                 <div>
                     <label for="descricao" class="form-label">Descrição da planta</label>
                     <textarea id="descricao" class="form-input"></textarea>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Outros campos do formulário -->
                     <div><label for="altura" class="form-label">Altura (cm)</label><input type="number" id="altura" class="form-input"></div>
                     <div><label for="larguraFolhas" class="form-label">Largura média das folhas (cm)</label><input type="number" id="larguraFolhas" class="form-input"></div>
                     <div><label for="crescimento" class="form-label">Crescimento (cm desde a última medição)</label><input type="number" id="crescimento" class="form-input"></div>
@@ -109,18 +99,19 @@
                 </div>
                 <div class="flex justify-between items-center pt-4">
                     <button type="button" id="form-back-btn" class="btn btn-secondary">Voltar</button>
-                    <button type="submit" class="btn btn-primary">Salvar Dados</button>
+                    <button type="submit" id="save-btn" class="btn btn-primary">Salvar Dados</button>
                 </div>
             </form>
         </div>
 
         <!-- VISÃO DE DADOS PARA O VISITANTE -->
         <div id="visitor-data-view" class="view">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">Informações da Planta: <span id="plant-id-visitor" class="text-green-600"></span></h2>
-            <div id="plant-data-display" class="space-y-3 text-gray-700"></div>
-            <div class="text-center mt-6">
+             <h2 id="visitor-plant-name" class="text-3xl font-bold text-gray-800 mb-4 text-center"></h2>
+             <img id="visitor-plant-photo" class="rounded-lg shadow-md mx-auto mb-6 max-h-80" src="#" alt="Foto da planta">
+             <div id="plant-data-display" class="space-y-3 text-gray-700"></div>
+             <div class="text-center mt-6">
                  <button id="visitor-back-btn" class="btn btn-secondary">Voltar</button>
-            </div>
+             </div>
         </div>
 
         <!-- VISÃO DO PAINEL DO PROFESSOR -->
@@ -139,39 +130,36 @@
                 <button id="message-ok-btn" class="btn btn-primary mt-4">OK</button>
             </div>
         </div>
-
     </div>
 
     <script type="module">
         // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, setDoc, doc, getDoc, collection, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, setDoc, doc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+
         // =====================================================================================
-        // ETAPA FINAL: COLE A CONFIGURAÇÃO DO SEU FIREBASE AQUI
-        // Você encontra isso no console do Firebase > Configurações do Projeto > Geral > Seus apps
+        // COLE A CONFIGURAÇÃO DO SEU FIREBASE AQUI
         // =====================================================================================
         const firebaseConfig = {
-         apiKey: "AIzaSyDXbg7KbN1LranNttsfCCR5ymvKgZX2rwU",
-         authDomain: "monitoramento-plantas-f0efb.firebaseapp.com",
-         projectId: "monitoramento-plantas-f0efb",
-         storageBucket: "monitoramento-plantas-f0efb.firebasestorage.app",
-         messagingSenderId: "370117301643",
-         appId: "1:370117301643:web:ee7a0f5bbe3cf8f4928b8e"
+        apiKey: "AIzaSyDXbg7KbN1LranNttsfCCR5ymvKgZX2rwU",
+        authDomain: "monitoramento-plantas-f0efb.firebaseapp.com",
+        projectId: "monitoramento-plantas-f0efb",
+        storageBucket: "monitoramento-plantas-f0efb.firebasestorage.app",
+        messagingSenderId: "370117301643",
+        appId: "1:370117301643:web:ee7a0f5bbe3cf8f4928b8e"
         };
         // =====================================================================================
 
-        // Lógica para funcionar no ambiente de testes (não precisa mexer)
         const finalFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'horta-escolar-default';
 
-        let app, db, auth, userId;
+        let app, db, auth, storage, userId;
         let currentRole = null;
         let currentPlantId = null;
         let qrCodeScanner;
 
-        // Elementos da UI
         const views = {
             roleSelection: document.getElementById('role-selection-view'),
             scanner: document.getElementById('scanner-view'),
@@ -193,6 +181,7 @@
                 app = initializeApp(finalFirebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
+                storage = getStorage(app); // Inicializa o Storage
                 
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
@@ -206,7 +195,7 @@
                 });
             } catch (error) {
                  console.error("Erro na inicialização do Firebase:", error);
-                 showMessage("Falha crítica na inicialização. Verifique se as chaves do Firebase estão corretas.");
+                 showMessage("Falha crítica na inicialização. Verifique as chaves do Firebase.");
             }
         }
         
@@ -223,7 +212,6 @@
             }
         }
         
-        // Ativa os botões de seleção de perfil quando o app está pronto
         function enableRoles() {
             roleButtons.aluno.disabled = false;
             roleButtons.aluno.textContent = 'Sou Aluno';
@@ -233,7 +221,6 @@
             roleButtons.professor.textContent = 'Sou Professor';
         }
 
-        // Funções de controle da UI
         function showView(viewName) {
             Object.values(views).forEach(v => v.style.display = 'none');
             if(views[viewName]) {
@@ -246,12 +233,9 @@
             messageModal.style.display = 'flex';
         }
         
-        document.getElementById('message-ok-btn').addEventListener('click', () => {
-            messageModal.style.display = 'none';
-        });
-
-        // Configuração dos Event Listeners (só é chamada quando a auth está pronta)
         function setupEventListeners() {
+            document.getElementById('message-ok-btn').addEventListener('click', () => { messageModal.style.display = 'none'; });
+            
             roleButtons.aluno.addEventListener('click', () => startScan('aluno'));
             roleButtons.visitante.addEventListener('click', () => startScan('visitante'));
             roleButtons.professor.addEventListener('click', () => {
@@ -265,6 +249,14 @@
             document.getElementById('teacher-back-btn').addEventListener('click', backToRoleSelection);
             
             document.getElementById('plant-form').addEventListener('submit', handleFormSubmit);
+            document.getElementById('plantPhoto').addEventListener('change', (event) => {
+                const preview = document.getElementById('photo-preview');
+                const file = event.target.files[0];
+                if (file) {
+                    preview.src = URL.createObjectURL(file);
+                    preview.classList.remove('hidden');
+                }
+            });
         }
 
         function backToRoleSelection() {
@@ -274,63 +266,47 @@
             showView('roleSelection');
         }
 
-        // Lógica do Leitor de QR Code
         function startScan(role) {
             currentRole = role;
             showView('scanner');
-            
-            // Garante que o scanner seja criado apenas uma vez.
-            if (!qrCodeScanner) {
-                qrCodeScanner = new Html5Qrcode("qr-reader");
-            }
-
-            const qrCodeSuccessCallback = (decodedText, decodedResult) => {
-                // Para o scanner assim que um código é lido com sucesso.
-                qrCodeScanner.stop()
-                    .then(() => handleQrCodeSuccess(decodedText))
-                    .catch(err => console.error("Falha ao parar o scanner.", err));
-            };
-
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-            
-            // Inicia o scanner
-            qrCodeScanner.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+            if (!qrCodeScanner) { qrCodeScanner = new Html5Qrcode("qr-reader"); }
+            qrCodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, 
+                (decodedText) => {
+                    qrCodeScanner.stop().then(() => handleQrCodeSuccess(decodedText));
+                })
             .catch((err) => {
-                showMessage("Não foi possível iniciar a câmera. Verifique as permissões do navegador para este site.");
-                console.error("Erro ao iniciar o scanner:", err);
+                showMessage("Não foi possível iniciar a câmera. Verifique as permissões.");
                 backToRoleSelection();
             });
         }
         
         function handleQrCodeSuccess(plantId) {
              currentPlantId = plantId;
-             if (currentRole === 'aluno') {
-                 loadStudentForm(plantId);
-             } else if (currentRole === 'visitante') {
-                 loadVisitorData(plantId);
-             }
+             if (currentRole === 'aluno') { loadStudentForm(plantId); } 
+             else if (currentRole === 'visitante') { loadVisitorData(plantId); }
         }
 
-        // Lógica do Formulário do Aluno
         async function loadStudentForm(plantId) {
             showView('studentForm');
             document.getElementById('plant-id-form').textContent = plantId;
             document.getElementById('plant-form').reset();
+            document.getElementById('upload-status').textContent = '';
+            const preview = document.getElementById('photo-preview');
+            preview.classList.add('hidden');
             
             try {
                 const docRef = doc(db, "artifacts", appId, "public/data/plants", plantId);
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    // Preenche o formulário com dados existentes
                     Object.keys(data).forEach(key => {
                         const element = document.getElementById(key);
-                        if (element) {
-                            element.value = data[key] || '';
-                        }
+                        if (element) { element.value = data[key] || ''; }
                     });
-                } else {
-                     console.log("Nenhum dado encontrado para esta planta. Formulário em branco.");
+                    if (data.photoURL) {
+                        preview.src = data.photoURL;
+                        preview.classList.remove('hidden');
+                    }
                 }
             } catch (error) {
                 console.error("Erro ao carregar dados da planta: ", error);
@@ -340,7 +316,33 @@
 
         async function handleFormSubmit(event) {
             event.preventDefault();
+            const saveBtn = document.getElementById('save-btn');
+            const statusDiv = document.getElementById('upload-status');
+            saveBtn.disabled = true;
+            
+            const fileInput = document.getElementById('plantPhoto');
+            const file = fileInput.files[0];
+            let photoURL = document.getElementById('photo-preview').src;
+
+            // Se um novo arquivo foi selecionado, faz o upload
+            if (file) {
+                statusDiv.textContent = 'Enviando foto...';
+                const storageRef = ref(storage, `plant_photos/${currentPlantId}/${new Date().getTime()}-${file.name}`);
+                try {
+                    const snapshot = await uploadBytes(storageRef, file);
+                    photoURL = await getDownloadURL(snapshot.ref);
+                    statusDiv.textContent = 'Foto enviada!';
+                } catch (error) {
+                    console.error("Erro no upload: ", error);
+                    showMessage("Erro ao enviar a foto. Tente novamente.");
+                    saveBtn.disabled = false;
+                    return;
+                }
+            }
+
             const formData = {
+                plantName: document.getElementById('plantName').value,
+                photoURL: photoURL.startsWith('blob:') ? '' : photoURL, // não salva URLs temporárias
                 descricao: document.getElementById('descricao').value,
                 altura: document.getElementById('altura').value,
                 larguraFolhas: document.getElementById('larguraFolhas').value,
@@ -361,27 +363,34 @@
             };
 
             try {
+                statusDiv.textContent = 'Salvando dados...';
                 const docRef = doc(db, "artifacts", appId, "public/data/plants", currentPlantId);
-                await setDoc(docRef, formData, { merge: true }); // Merge true atualiza sem sobrescrever
+                await setDoc(docRef, formData, { merge: true });
                 showMessage("Dados salvos com sucesso!");
                 backToRoleSelection();
             } catch (error) {
                 console.error("Erro ao salvar dados: ", error);
                 showMessage("Ocorreu um erro ao salvar. Tente novamente.");
+            } finally {
+                saveBtn.disabled = false;
+                statusDiv.textContent = '';
             }
         }
 
-        // Lógica da Visão do Visitante
         function loadVisitorData(plantId) {
             showView('visitorData');
-            document.getElementById('plant-id-visitor').textContent = plantId;
+            const nameEl = document.getElementById('visitor-plant-name');
+            const photoEl = document.getElementById('visitor-plant-photo');
             const displayDiv = document.getElementById('plant-data-display');
-            displayDiv.innerHTML = '<p>Carregando dados...</p>';
+            nameEl.textContent = `Carregando... (${plantId})`;
 
             const docRef = doc(db, "artifacts", appId, "public/data/plants", plantId);
             onSnapshot(docRef, (doc) => {
                  if (doc.exists()) {
                     const data = doc.data();
+                    nameEl.textContent = data.plantName || `Planta ${plantId}`;
+                    photoEl.src = data.photoURL || 'https://placehold.co/600x400/eeeeee/333333?text=Sem+Foto';
+                    
                     const labels = {
                         descricao: "Descrição", altura: "Altura (cm)", larguraFolhas: "Largura Média das Folhas (cm)",
                         crescimento: "Crescimento Recente (cm)", comprimentoFolhas: "Comprimento Médio das Folhas (cm)",
@@ -397,15 +406,13 @@
                     }
                     displayDiv.innerHTML = html || '<p>Ainda não há dados coletados para esta planta.</p>';
                 } else {
-                    displayDiv.innerHTML = '<p>Planta não encontrada. Verifique o QR Code.</p>';
+                    nameEl.textContent = `Planta ${plantId} não encontrada`;
+                    photoEl.classList.add('hidden');
+                    displayDiv.innerHTML = '<p>Verifique o QR Code.</p>';
                 }
-            }, (error) => {
-                console.error("Erro ao buscar dados (visitante):", error);
-                displayDiv.innerHTML = '<p>Não foi possível carregar os dados. Tente novamente.</p>';
             });
         }
         
-        // Lógica do Painel do Professor
         function loadTeacherDashboard() {
             showView('teacherDashboard');
             const container = document.getElementById('all-plants-data');
@@ -418,35 +425,33 @@
                     return;
                 }
                 
-                let tableHtml = `<table class="min-w-full bg-white border">
+                let tableHtml = `<table class="min-w-full bg-white border text-sm">
                     <thead class="bg-gray-200">
                         <tr>
-                            <th class="py-2 px-4 border-b">Planta</th>
-                            <th class="py-2 px-4 border-b">Estado</th>
-                            <th class="py-2 px-4 border-b">Altura (cm)</th>
-                            <th class="py-2 px-4 border-b">Frutos</th>
-                            <th class="py-2 px-4 border-b">Última Atualização</th>
+                            <th class="py-2 px-3 border-b">Foto</th>
+                            <th class="py-2 px-3 border-b">Cód.</th>
+                            <th class="py-2 px-3 border-b">Nome</th>
+                            <th class="py-2 px-3 border-b">Estado</th>
+                            <th class="py-2 px-3 border-b">Última Atualização</th>
                         </tr>
                     </thead><tbody>`;
 
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
+                    const photoThumb = data.photoURL || 'https://placehold.co/40x40/eeeeee/333333?text=N/A';
                     tableHtml += `
                         <tr class="hover:bg-gray-50 text-center">
-                            <td class="py-2 px-4 border-b font-semibold text-green-700">${doc.id}</td>
-                            <td class="py-2 px-4 border-b">${data.estadoGeral || 'N/A'}</td>
-                            <td class="py-2 px-4 border-b">${data.altura || 'N/A'}</td>
-                            <td class="py-2 px-4 border-b">${data.numFrutos || 'N/A'}</td>
-                            <td class="py-2 px-4 border-b">${data.lastUpdated || 'N/A'}</td>
+                            <td class="py-2 px-3 border-b"><img src="${photoThumb}" class="w-10 h-10 rounded-full object-cover mx-auto"></td>
+                            <td class="py-2 px-3 border-b font-semibold text-green-700">${doc.id}</td>
+                            <td class="py-2 px-3 border-b">${data.plantName || 'N/A'}</td>
+                            <td class="py-2 px-3 border-b">${data.estadoGeral || 'N/A'}</td>
+                            <td class="py-2 px-3 border-b">${data.lastUpdated || 'N/A'}</td>
                         </tr>
                     `;
                 });
 
                 tableHtml += '</tbody></table>';
                 container.innerHTML = tableHtml;
-            }, (error) => {
-                console.error("Erro ao carregar painel:", error);
-                container.innerHTML = '<p>Erro ao carregar os dados das plantas.</p>';
             });
         }
 
@@ -456,4 +461,3 @@
     </script>
 </body>
 </html>
-
