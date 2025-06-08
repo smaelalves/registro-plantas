@@ -148,8 +148,22 @@
         import { getFirestore, setDoc, doc, getDoc, collection, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         
-        // Configuração do Firebase
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        // =====================================================================================
+        // ETAPA FINAL: COLE A CONFIGURAÇÃO DO SEU FIREBASE AQUI
+        // Você encontra isso no console do Firebase > Configurações do Projeto > Geral > Seus apps
+        // =====================================================================================
+        const firebaseConfig = {
+         apiKey: "AIzaSyDXbg7KbN1LranNttsfCCR5ymvKgZX2rwU",
+         authDomain: "monitoramento-plantas-f0efb.firebaseapp.com",
+         projectId: "monitoramento-plantas-f0efb",
+         storageBucket: "monitoramento-plantas-f0efb.firebasestorage.app",
+         messagingSenderId: "370117301643",
+         appId: "1:370117301643:web:ee7a0f5bbe3cf8f4928b8e"
+        };
+        // =====================================================================================
+
+        // Lógica para funcionar no ambiente de testes (não precisa mexer)
+        const finalFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'horta-escolar-default';
 
         let app, db, auth, userId;
@@ -176,7 +190,7 @@
         // FUNÇÃO PRINCIPAL DE INICIALIZAÇÃO
         async function main() {
             try {
-                app = initializeApp(firebaseConfig);
+                app = initializeApp(finalFirebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
                 
@@ -184,17 +198,15 @@
                     if (user) {
                         userId = user.uid;
                         document.getElementById('user-id-display').textContent = `ID de Sessão: ${userId}`;
-                        // APLICAÇÃO PRONTA: Ativa os botões
                         enableRoles();
                         setupEventListeners();
                     } else {
-                        // Se não houver usuário, tenta autenticar.
                         authenticateUser();
                     }
                 });
             } catch (error) {
                  console.error("Erro na inicialização do Firebase:", error);
-                 showMessage("Falha crítica na inicialização. Recarregue a página.");
+                 showMessage("Falha crítica na inicialização. Verifique se as chaves do Firebase estão corretas.");
             }
         }
         
@@ -207,7 +219,7 @@
                 }
             } catch (error) {
                 console.error("Erro na autenticação:", error);
-                showMessage("Erro ao conectar. Tente recarregar a página.");
+                showMessage("Erro ao conectar ao banco de dados.");
             }
         }
         
@@ -444,3 +456,4 @@
     </script>
 </body>
 </html>
+
