@@ -1,97 +1,419 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Coleta de Dados da Planta com QR Code</title>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyByIpGG2Blw0hRUmyPXqal10M_R2ZwI9bg",
-      authDomain: "monitoramento-plantas.firebaseapp.com",
-      databaseURL: "https://monitoramento-plantas-default-rtdb.firebaseio.com",
-      projectId: "monitoramento-plantas",
-      storageBucket: "monitoramento-plantas.firebasestorage.app",
-      messagingSenderId: "1020939163682",
-      appId: "1:1020939163682:web:b27eb35d04b080fc2fd27b"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-
-    window.enviarDados = function () {
-      const codigo = document.getElementById("codigo").value;
-      const tamanho = document.getElementById("tamanho").value;
-      const dataColeta = document.getElementById("dataColeta").value;
-
-      if (!codigo || !tamanho || !dataColeta) {
-        alert("Preencha todos os campos.");
-        return;
-      }
-
-      set(ref(db, 'plantas/' + codigo), {
-        codigo: codigo,
-        tamanho: tamanho,
-        dataColeta: dataColeta
-      })
-      .then(() => {
-        alert("Dados enviados com sucesso!");
-        document.getElementById("formPlanta").reset();
-      })
-      .catch((error) => {
-        console.error("Erro ao enviar dados:", error);
-        alert("Erro ao enviar dados. Verifique o console.");
-      });
-    };
-  </script>
-
-  <!-- HTML5 QR Code -->
-  <script src="https://unpkg.com/html5-qrcode" defer></script>
-  <style>
-    #qr-reader {
-      width: 300px;
-      margin-bottom: 10px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Horta Escolar: Dados e Natureza</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .view { display: none; }
+        #qr-reader { border: 2px dashed #cbd5e1; border-radius: 8px; }
+        .form-label {
+            font-weight: 500;
+            color: #4a5568;
+        }
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            transition: border-color 0.2s;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.5);
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 700;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: inline-block;
+        }
+        .btn-primary { background-color: #2d8b51; color: white; }
+        .btn-primary:hover { background-color: #256a40; }
+        .btn-secondary { background-color: #f1f5f9; color: #475569; }
+        .btn-secondary:hover { background-color: #e2e8f0; }
+    </style>
 </head>
-<body>
-  <h2>Formulário de Coleta de Dados da Planta</h2>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
 
-  <div id="qr-reader"></div>
-  <p><strong>Código escaneado:</strong> <span id="codigoDisplay">Nenhum</span></p>
+    <div id="app-container" class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg w-full max-w-3xl">
+        
+        <!-- VISÃO DE SELEÇÃO DE PERFIL -->
+        <div id="role-selection-view" class="view" style="display: block;">
+            <div class="text-center">
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">Horta Escolar</h1>
+                <p class="text-lg text-gray-600 mb-8">Conectando Dados e Natureza</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button id="aluno-btn" class="btn btn-primary w-full text-lg">Sou Aluno</button>
+                <button id="visitante-btn" class="btn btn-primary w-full text-lg">Sou Visitante</button>
+                <button id="professor-btn" class="btn btn-primary w-full text-lg">Sou Professor</button>
+            </div>
+            <div class="text-center mt-6">
+                <p id="user-id-display" class="text-xs text-gray-400"></p>
+            </div>
+        </div>
 
-  <form id="formPlanta" onsubmit="event.preventDefault(); enviarDados();">
-    <label>Código da Planta:<br>
-      <input type="text" id="codigo" required readonly>
-    </label><br><br>
+        <!-- VISÃO DO LEITOR DE QR CODE -->
+        <div id="scanner-view" class="view">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Aponte para o QR Code</h2>
+            <div id="qr-reader" class="w-full max-w-md mx-auto"></div>
+            <div class="text-center mt-6">
+                <button id="scanner-back-btn" class="btn btn-secondary">Voltar</button>
+            </div>
+        </div>
 
-    <label>Tamanho (cm):<br>
-      <input type="number" id="tamanho" required>
-    </label><br><br>
+        <!-- VISÃO DO FORMULÁRIO DO ALUNO -->
+        <div id="student-form-view" class="view">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Dados da Planta: <span id="plant-id-form" class="text-green-600"></span></h2>
+            <form id="plant-form" class="space-y-4">
+                <div>
+                    <label for="descricao" class="form-label">Descrição da planta</label>
+                    <textarea id="descricao" class="form-input"></textarea>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div><label for="altura" class="form-label">Altura (cm)</label><input type="number" id="altura" class="form-input"></div>
+                    <div><label for="larguraFolhas" class="form-label">Largura média das folhas (cm)</label><input type="number" id="larguraFolhas" class="form-input"></div>
+                    <div><label for="crescimento" class="form-label">Crescimento (cm desde a última medição)</label><input type="number" id="crescimento" class="form-input"></div>
+                    <div><label for="comprimentoFolhas" class="form-label">Comprimento médio das folhas (cm)</label><input type="number" id="comprimentoFolhas" class="form-input"></div>
+                    <div><label for="corFolhas" class="form-label">Cor das folhas</label><input type="text" id="corFolhas" class="form-input"></div>
+                    <div><label for="numFlores" class="form-label">Número de flores</label><input type="number" id="numFlores" class="form-input"></div>
+                    <div><label for="numFrutos" class="form-label">Número de frutos</label><input type="number" id="numFrutos" class="form-input"></div>
+                    <div><label for="pragas" class="form-label">Presença de pragas</label><input type="text" id="pragas" class="form-input"></div>
+                    <div><label for="tempoPlantio" class="form-label">Tempo desde o plantio (dias)</label><input type="number" id="tempoPlantio" class="form-input"></div>
+                    <div><label for="agua" class="form-label">Água aplicada (ml)</label><input type="number" id="agua" class="form-input"></div>
+                    <div>
+                        <label for="estadoGeral" class="form-label">Estado geral</label>
+                        <select id="estadoGeral" class="form-input"><option>Excelente</option><option>Bom</option><option>Regular</option><option>Ruim</option></select>
+                    </div>
+                    <div>
+                        <label for="fase" class="form-label">Fase de desenvolvimento</label>
+                        <select id="fase" class="form-input"><option>Germinação</option><option>Crescimento</option><option>Floração</option><option>Frutificação</option></select>
+                    </div>
+                    <div><label for="manchas" class="form-label">Manchas nas folhas</label><input type="text" id="manchas" class="form-input"></div>
+                    <div><label for="luminosidade" class="form-label">Luminosidade recebida</label><input type="text" id="luminosidade" placeholder="Ex: Sol pleno, meia-sombra" class="form-input"></div>
+                </div>
+                <div class="flex justify-between items-center pt-4">
+                    <button type="button" id="form-back-btn" class="btn btn-secondary">Voltar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Dados</button>
+                </div>
+            </form>
+        </div>
 
-    <label>Data de Coleta:<br>
-      <input type="date" id="dataColeta" required>
-    </label><br><br>
+        <!-- VISÃO DE DADOS PARA O VISITANTE -->
+        <div id="visitor-data-view" class="view">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Informações da Planta: <span id="plant-id-visitor" class="text-green-600"></span></h2>
+            <div id="plant-data-display" class="space-y-3 text-gray-700"></div>
+            <div class="text-center mt-6">
+                 <button id="visitor-back-btn" class="btn btn-secondary">Voltar</button>
+            </div>
+        </div>
 
-    <button type="submit">Enviar</button>
-  </form>
+        <!-- VISÃO DO PAINEL DO PROFESSOR -->
+        <div id="teacher-dashboard-view" class="view">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Painel do Professor - Todas as Plantas</h2>
+            <div id="all-plants-data" class="overflow-x-auto"></div>
+            <div class="text-center mt-6">
+                <button id="teacher-back-btn" class="btn btn-secondary">Voltar</button>
+            </div>
+        </div>
+        
+        <!-- MODAL DE MENSAGEM -->
+        <div id="message-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 view">
+            <div class="bg-white rounded-lg shadow-xl p-6 text-center">
+                <p id="message-text" class="text-lg"></p>
+                <button id="message-ok-btn" class="btn btn-primary mt-4">OK</button>
+            </div>
+        </div>
 
-  <script>
-    window.addEventListener('load', function () {
-      if (window.Html5QrcodeScanner) {
-        const scanner = new Html5QrcodeScanner(
-          "qr-reader", { fps: 10, qrbox: 250 });
+    </div>
 
-        scanner.render((decodedText, decodedResult) => {
-          document.getElementById("codigo").value = decodedText;
-          document.getElementById("codigoDisplay").innerText = decodedText;
-          scanner.clear(); // parar o scanner após escanear
+    <script type="module">
+        // Importações do Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, setDoc, doc, getDoc, collection, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        
+        // Configuração do Firebase
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'horta-escolar-default';
+
+        let app, db, auth, userId;
+        let currentRole = null;
+        let currentPlantId = null;
+        let qrCodeScanner;
+
+        // Elementos da UI
+        const views = {
+            roleSelection: document.getElementById('role-selection-view'),
+            scanner: document.getElementById('scanner-view'),
+            studentForm: document.getElementById('student-form-view'),
+            visitorData: document.getElementById('visitor-data-view'),
+            teacherDashboard: document.getElementById('teacher-dashboard-view')
+        };
+        const messageModal = document.getElementById('message-modal');
+        const messageText = document.getElementById('message-text');
+
+        // FUNÇÃO PRINCIPAL DE INICIALIZAÇÃO
+        async function main() {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                    document.getElementById('user-id-display').textContent = `ID de Sessão: ${userId}`;
+                    setupEventListeners();
+                } else {
+                    console.log("Usuário não autenticado, tentando login anônimo.");
+                    await authenticateUser();
+                }
+            });
+
+             if (!auth.currentUser) {
+                await authenticateUser();
+            }
+        }
+        
+        async function authenticateUser() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Erro na autenticação:", error);
+                showMessage("Erro ao conectar. Tente recarregar a página.");
+            }
+        }
+
+        // Funções de controle da UI
+        function showView(viewName) {
+            Object.values(views).forEach(v => v.style.display = 'none');
+            if(views[viewName]) {
+                views[viewName].style.display = 'block';
+            }
+        }
+
+        function showMessage(msg) {
+            messageText.textContent = msg;
+            messageModal.style.display = 'flex';
+        }
+        
+        document.getElementById('message-ok-btn').addEventListener('click', () => {
+            messageModal.style.display = 'none';
         });
-      } else {
-        console.error("html5-qrcode não carregado.");
-      }
-    });
-  </script>
+
+        // Configuração dos Event Listeners
+        function setupEventListeners() {
+            document.getElementById('aluno-btn').addEventListener('click', () => startScan('aluno'));
+            document.getElementById('visitante-btn').addEventListener('click', () => startScan('visitante'));
+            document.getElementById('professor-btn').addEventListener('click', () => {
+                currentRole = 'professor';
+                loadTeacherDashboard();
+            });
+
+            document.getElementById('scanner-back-btn').addEventListener('click', backToRoleSelection);
+            document.getElementById('form-back-btn').addEventListener('click', () => startScan(currentRole));
+            document.getElementById('visitor-back-btn').addEventListener('click', () => startScan(currentRole));
+            document.getElementById('teacher-back-btn').addEventListener('click', backToRoleSelection);
+            
+            document.getElementById('plant-form').addEventListener('submit', handleFormSubmit);
+        }
+
+        function backToRoleSelection() {
+            if (qrCodeScanner && qrCodeScanner.isScanning) {
+                qrCodeScanner.clear().catch(err => console.error("Falha ao limpar scanner", err));
+            }
+            showView('roleSelection');
+        }
+
+        // Lógica do Leitor de QR Code
+        function startScan(role) {
+            currentRole = role;
+            showView('scanner');
+            
+            if (!qrCodeScanner) {
+                qrCodeScanner = new Html5Qrcode("qr-reader");
+            }
+
+            const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+                qrCodeScanner.clear().catch(err => console.error("Falha ao parar o scanner.", err));
+                handleQrCodeSuccess(decodedText);
+            };
+
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            qrCodeScanner.start({ facingMode: "environment" }, config, qrCodeSuccessCallback, (errorMessage) => {
+                // Erros de scan podem ser ignorados
+            }).catch((err) => {
+                showMessage("Não foi possível iniciar a câmera. Verifique as permissões.");
+                console.error(err);
+                backToRoleSelection();
+            });
+        }
+        
+        function handleQrCodeSuccess(plantId) {
+             currentPlantId = plantId;
+             if (currentRole === 'aluno') {
+                 loadStudentForm(plantId);
+             } else if (currentRole === 'visitante') {
+                 loadVisitorData(plantId);
+             }
+        }
+
+        // Lógica do Formulário do Aluno
+        async function loadStudentForm(plantId) {
+            showView('studentForm');
+            document.getElementById('plant-id-form').textContent = plantId;
+            document.getElementById('plant-form').reset();
+            
+            try {
+                const docRef = doc(db, "artifacts", appId, "public/data/plants", plantId);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    // Preenche o formulário com dados existentes
+                    Object.keys(data).forEach(key => {
+                        const element = document.getElementById(key);
+                        if (element) {
+                            element.value = data[key] || '';
+                        }
+                    });
+                } else {
+                     console.log("Nenhum dado encontrado para esta planta. Formulário em branco.");
+                }
+            } catch (error) {
+                console.error("Erro ao carregar dados da planta: ", error);
+                showMessage("Não foi possível carregar os dados existentes.");
+            }
+        }
+
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+            const formData = {
+                descricao: document.getElementById('descricao').value,
+                altura: document.getElementById('altura').value,
+                larguraFolhas: document.getElementById('larguraFolhas').value,
+                crescimento: document.getElementById('crescimento').value,
+                comprimentoFolhas: document.getElementById('comprimentoFolhas').value,
+                corFolhas: document.getElementById('corFolhas').value,
+                numFlores: document.getElementById('numFlores').value,
+                numFrutos: document.getElementById('numFrutos').value,
+                pragas: document.getElementById('pragas').value,
+                tempoPlantio: document.getElementById('tempoPlantio').value,
+                agua: document.getElementById('agua').value,
+                estadoGeral: document.getElementById('estadoGeral').value,
+                fase: document.getElementById('fase').value,
+                manchas: document.getElementById('manchas').value,
+                luminosidade: document.getElementById('luminosidade').value,
+                lastUpdated: new Date().toLocaleString('pt-BR')
+            };
+
+            try {
+                const docRef = doc(db, "artifacts", appId, "public/data/plants", currentPlantId);
+                await setDoc(docRef, formData, { merge: true }); // Merge true atualiza sem sobrescrever
+                showMessage("Dados salvos com sucesso!");
+                backToRoleSelection();
+            } catch (error) {
+                console.error("Erro ao salvar dados: ", error);
+                showMessage("Ocorreu um erro ao salvar. Tente novamente.");
+            }
+        }
+
+        // Lógica da Visão do Visitante
+        function loadVisitorData(plantId) {
+            showView('visitorData');
+            document.getElementById('plant-id-visitor').textContent = plantId;
+            const displayDiv = document.getElementById('plant-data-display');
+            displayDiv.innerHTML = '<p>Carregando dados...</p>';
+
+            const docRef = doc(db, "artifacts", appId, "public/data/plants", plantId);
+            onSnapshot(docRef, (doc) => {
+                 if (doc.exists()) {
+                    const data = doc.data();
+                    const labels = {
+                        descricao: "Descrição", altura: "Altura (cm)", larguraFolhas: "Largura Média das Folhas (cm)",
+                        crescimento: "Crescimento Recente (cm)", comprimentoFolhas: "Comprimento Médio das Folhas (cm)",
+                        corFolhas: "Cor das Folhas", numFlores: "Flores", numFrutos: "Frutos", pragas: "Pragas",
+                        tempoPlantio: "Dias de Plantio", agua: "Água Recebida (ml)", estadoGeral: "Estado Geral",
+                        fase: "Fase", manchas: "Manchas nas Folhas", luminosidade: "Luminosidade", lastUpdated: "Última Atualização"
+                    };
+                    let html = '';
+                    for (const key in labels) {
+                        if (data[key]) {
+                            html += `<div class="p-3 bg-gray-50 rounded-lg"><strong class="text-gray-600">${labels[key]}:</strong> ${data[key]}</div>`;
+                        }
+                    }
+                    displayDiv.innerHTML = html || '<p>Ainda não há dados coletados para esta planta.</p>';
+                } else {
+                    displayDiv.innerHTML = '<p>Planta não encontrada. Verifique o QR Code.</p>';
+                }
+            }, (error) => {
+                console.error("Erro ao buscar dados (visitante):", error);
+                displayDiv.innerHTML = '<p>Não foi possível carregar os dados. Tente novamente.</p>';
+            });
+        }
+        
+        // Lógica do Painel do Professor
+        function loadTeacherDashboard() {
+            showView('teacherDashboard');
+            const container = document.getElementById('all-plants-data');
+            container.innerHTML = '<p>Carregando painel...</p>';
+            
+            const plantsRef = collection(db, "artifacts", appId, "public/data/plants");
+            onSnapshot(plantsRef, (querySnapshot) => {
+                if (querySnapshot.empty) {
+                    container.innerHTML = '<p>Nenhuma planta foi cadastrada ainda.</p>';
+                    return;
+                }
+                
+                let tableHtml = `<table class="min-w-full bg-white border">
+                    <thead class="bg-gray-200">
+                        <tr>
+                            <th class="py-2 px-4 border-b">Planta</th>
+                            <th class="py-2 px-4 border-b">Estado</th>
+                            <th class="py-2 px-4 border-b">Altura (cm)</th>
+                            <th class="py-2 px-4 border-b">Frutos</th>
+                            <th class="py-2 px-4 border-b">Última Atualização</th>
+                        </tr>
+                    </thead><tbody>`;
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    tableHtml += `
+                        <tr class="hover:bg-gray-50 text-center">
+                            <td class="py-2 px-4 border-b font-semibold text-green-700">${doc.id}</td>
+                            <td class="py-2 px-4 border-b">${data.estadoGeral || 'N/A'}</td>
+                            <td class="py-2 px-4 border-b">${data.altura || 'N/A'}</td>
+                            <td class="py-2 px-4 border-b">${data.numFrutos || 'N/A'}</td>
+                            <td class="py-2 px-4 border-b">${data.lastUpdated || 'N/A'}</td>
+                        </tr>
+                    `;
+                });
+
+                tableHtml += '</tbody></table>';
+                container.innerHTML = tableHtml;
+            }, (error) => {
+                console.error("Erro ao carregar painel:", error);
+                container.innerHTML = '<p>Erro ao carregar os dados das plantas.</p>';
+            });
+        }
+
+        // Inicia a aplicação
+        main();
+
+    </script>
 </body>
 </html>
